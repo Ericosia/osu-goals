@@ -1,0 +1,1198 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>osu! score goals</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=DM+Sans:wght@200;300;400&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #1a1a1a;
+    --bg2: #222222;
+    --bg3: #2a2a2a;
+    --border: #333333;
+    --border-light: #3d3d3d;
+    --text: #e8e8e8;
+    --text-dim: #888888;
+    --text-dimmer: #555555;
+    --accent: #e8e8e8;
+    --pink: #ff6b9d;
+    --pink-dim: rgba(255, 107, 157, 0.15);
+    --mono: 'DM Mono', monospace;
+    --sans: 'DM Sans', sans-serif;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    font-weight: 300;
+    min-height: 100vh;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /*  HEADER  */
+  header {
+    padding: 2rem 2.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 1px solid var(--border);
+    position: sticky;
+    top: 0;
+    background: var(--bg);
+    z-index: 100;
+  }
+
+  .logo {
+    font-family: var(--mono);
+    font-size: 0.75rem;
+    font-weight: 500;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+  }
+  .logo span { color: var(--pink); }
+
+  .header-actions {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+  }
+
+  #auth-btn {
+    font-family: var(--mono);
+    font-size: 0.7rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    background: none;
+    border: 1px solid var(--border-light);
+    color: var(--text-dim);
+    padding: 0.5rem 1rem;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  #auth-btn:hover { border-color: var(--text-dim); color: var(--text); }
+  #auth-btn.logged-in { border-color: var(--pink); color: var(--pink); }
+
+  /*  CONTROLS  */
+  .controls {
+    padding: 1.5rem 2.5rem;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .tab-group {
+    display: flex;
+    gap: 0;
+    border: 1px solid var(--border);
+  }
+
+  .tab-btn {
+    font-family: var(--mono);
+    font-size: 0.65rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    background: none;
+    border: none;
+    border-right: 1px solid var(--border);
+    color: var(--text-dimmer);
+    padding: 0.5rem 1rem;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .tab-btn:last-child { border-right: none; }
+  .tab-btn.active { background: var(--bg3); color: var(--text); }
+  .tab-btn:hover:not(.active) { color: var(--text-dim); }
+
+  .count-badge {
+    font-family: var(--mono);
+    font-size: 0.65rem;
+    color: var(--text-dimmer);
+    margin-left: auto;
+  }
+  .count-badge span { color: var(--text-dim); }
+
+  #add-btn, #bulk-btn {
+    font-family: var(--mono);
+    font-size: 0.65rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    background: none;
+    border: 1px solid var(--border);
+    color: var(--text-dim);
+    padding: 0.5rem 1rem;
+    cursor: pointer;
+    transition: all 0.15s;
+    display: none;
+  }
+  #add-btn:hover, #bulk-btn:hover { border-color: var(--text-dim); color: var(--text); }
+  body.authed #add-btn, body.authed #bulk-btn { display: block; }
+
+  /*  GRID  */
+  .grid-wrap {
+    padding: 2rem 2.5rem;
+  }
+
+  .section-label {
+    font-family: var(--mono);
+    font-size: 0.65rem;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--text-dimmer);
+    margin-bottom: 1.25rem;
+    padding-bottom: 0.75rem;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 1px;
+    background: var(--border);
+    margin-bottom: 3rem;
+  }
+
+  /*  CARD  */
+  .card {
+    background: var(--bg);
+    position: relative;
+    overflow: hidden;
+    cursor: default;
+    transition: background 0.15s;
+  }
+  .card:hover { background: var(--bg2); }
+
+  .card-bg {
+    position: absolute;
+    inset: 0;
+    background-size: cover;
+    background-position: center;
+    opacity: 0.12;
+    transition: opacity 0.2s;
+  }
+  .card:hover .card-bg { opacity: 0.18; }
+
+  .card-inner {
+    position: relative;
+    padding: 1.25rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    min-height: 160px;
+  }
+
+  .card-top {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 0.5rem;
+  }
+
+  .card-title {
+    font-size: 0.85rem;
+    font-weight: 400;
+    color: var(--text);
+    line-height: 1.3;
+    flex: 1;
+  }
+  .card-artist {
+    font-size: 0.72rem;
+    color: var(--text-dim);
+    margin-top: 0.2rem;
+    font-weight: 300;
+  }
+
+  .importance-badge {
+    font-family: var(--mono);
+    font-size: 0.65rem;
+    color: var(--text-dimmer);
+    border: 1px solid var(--border);
+    padding: 0.2rem 0.45rem;
+    flex-shrink: 0;
+    line-height: 1;
+  }
+  .importance-badge.high { border-color: var(--pink); color: var(--pink); }
+  .importance-badge.med { border-color: #888; color: #888; }
+
+  .card-diff {
+    font-family: var(--mono);
+    font-size: 0.68rem;
+    color: var(--text-dim);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+  .star-rating {
+    color: var(--text-dimmer);
+  }
+  .star-rating span { color: #f5c842; }
+
+  .card-goals {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    margin-top: auto;
+  }
+
+  .goal-chip {
+    font-family: var(--mono);
+    font-size: 0.65rem;
+    letter-spacing: 0.05em;
+    padding: 0.3rem 0.6rem;
+    border: 1px solid var(--border-light);
+    color: var(--text-dim);
+    background: rgba(255,255,255,0.02);
+  }
+  .goal-chip.achieved {
+    border-color: rgba(255,107,157,0.4);
+    color: var(--pink);
+    background: var(--pink-dim);
+  }
+
+  .card-actions {
+    display: none;
+    position: absolute;
+    top: 0.75rem;
+    right: 0.75rem;
+    gap: 0.25rem;
+  }
+  body.authed .card:hover .card-actions { display: flex; }
+
+  .card-action-btn {
+    font-family: var(--mono);
+    font-size: 0.6rem;
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    color: var(--text-dim);
+    padding: 0.3rem 0.5rem;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .card-action-btn:hover { border-color: var(--text-dim); color: var(--text); }
+  .card-action-btn.del:hover { border-color: #cc4444; color: #cc4444; }
+
+  .empty-state {
+    grid-column: 1 / -1;
+    padding: 4rem 2rem;
+    text-align: center;
+    font-family: var(--mono);
+    font-size: 0.7rem;
+    color: var(--text-dimmer);
+    letter-spacing: 0.1em;
+  }
+
+  /*  MODAL  */
+  .modal-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.75);
+    z-index: 200;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+  }
+  .modal-overlay.open { display: flex; }
+
+  .modal {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    width: 100%;
+    max-width: 520px;
+    max-height: 90vh;
+    overflow-y: auto;
+    padding: 2rem;
+    position: relative;
+  }
+
+  .modal-title {
+    font-family: var(--mono);
+    font-size: 0.7rem;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    margin-bottom: 1.75rem;
+  }
+
+  .form-group {
+    margin-bottom: 1.25rem;
+  }
+
+  label {
+    display: block;
+    font-family: var(--mono);
+    font-size: 0.62rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--text-dimmer);
+    margin-bottom: 0.5rem;
+  }
+  label .optional {
+    color: var(--text-dimmer);
+    font-size: 0.55rem;
+    letter-spacing: 0;
+    text-transform: none;
+    margin-left: 0.25rem;
+  }
+
+  input, textarea, select {
+    width: 100%;
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-family: var(--mono);
+    font-size: 0.78rem;
+    padding: 0.65rem 0.75rem;
+    outline: none;
+    transition: border-color 0.15s;
+    appearance: none;
+  }
+  input:focus, textarea:focus, select:focus { border-color: var(--border-light); }
+  textarea { resize: vertical; min-height: 100px; line-height: 1.5; }
+
+  .form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 0.75rem;
+  }
+
+  .importance-row {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+  }
+  .importance-row input[type=range] {
+    flex: 1;
+    padding: 0;
+    background: none;
+    border: none;
+    cursor: pointer;
+    accent-color: var(--pink);
+  }
+  .importance-val {
+    font-family: var(--mono);
+    font-size: 0.85rem;
+    color: var(--text);
+    width: 1.5rem;
+    text-align: center;
+  }
+
+  .map-preview {
+    display: none;
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    padding: 1rem;
+    margin-top: 0.75rem;
+    gap: 0.75rem;
+    align-items: center;
+  }
+  .map-preview.show { display: flex; }
+  .map-preview img {
+    width: 72px;
+    height: 48px;
+    object-fit: cover;
+    flex-shrink: 0;
+  }
+  .map-preview-info { font-size: 0.75rem; }
+  .map-preview-info .title { color: var(--text); margin-bottom: 0.25rem; }
+  .map-preview-info .sub { color: var(--text-dim); font-size: 0.68rem; font-family: var(--mono); }
+
+  .modal-actions {
+    display: flex;
+    gap: 0.75rem;
+    margin-top: 1.75rem;
+  }
+
+  .btn-primary {
+    font-family: var(--mono);
+    font-size: 0.65rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    background: var(--text);
+    border: 1px solid var(--text);
+    color: var(--bg);
+    padding: 0.65rem 1.5rem;
+    cursor: pointer;
+    transition: all 0.15s;
+    flex: 1;
+  }
+  .btn-primary:hover { background: var(--pink); border-color: var(--pink); }
+  .btn-primary:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  .btn-secondary {
+    font-family: var(--mono);
+    font-size: 0.65rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    background: none;
+    border: 1px solid var(--border);
+    color: var(--text-dim);
+    padding: 0.65rem 1.25rem;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .btn-secondary:hover { border-color: var(--text-dim); color: var(--text); }
+
+  .modal-close {
+    position: absolute;
+    top: 1.25rem;
+    right: 1.25rem;
+    background: none;
+    border: none;
+    color: var(--text-dimmer);
+    font-size: 1rem;
+    cursor: pointer;
+    font-family: var(--mono);
+    transition: color 0.15s;
+  }
+  .modal-close:hover { color: var(--text); }
+
+  /* fetch status */
+  .fetch-status {
+    font-family: var(--mono);
+    font-size: 0.65rem;
+    color: var(--text-dimmer);
+    margin-top: 0.4rem;
+  }
+  .fetch-status.ok { color: #5cba5c; }
+  .fetch-status.err { color: #cc4444; }
+
+  /* bulk modal */
+  .bulk-note {
+    font-family: var(--mono);
+    font-size: 0.65rem;
+    color: var(--text-dimmer);
+    line-height: 1.6;
+    margin-bottom: 1.25rem;
+  }
+
+  /* achieved toggle */
+  .achieved-toggle {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+  }
+  .achieved-toggle input[type=checkbox] {
+    width: 14px;
+    height: 14px;
+    accent-color: var(--pink);
+    cursor: pointer;
+  }
+  .achieved-toggle label {
+    margin: 0;
+    cursor: pointer;
+    font-size: 0.65rem;
+  }
+
+  /* toast */
+  #toast {
+    position: fixed;
+    bottom: 2rem;
+    right: 2rem;
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    font-family: var(--mono);
+    font-size: 0.65rem;
+    letter-spacing: 0.08em;
+    color: var(--text-dim);
+    padding: 0.75rem 1.25rem;
+    z-index: 999;
+    opacity: 0;
+    transform: translateY(0.5rem);
+    transition: all 0.2s;
+    pointer-events: none;
+  }
+  #toast.show { opacity: 1; transform: translateY(0); }
+  #toast.ok { border-color: #5cba5c; color: #5cba5c; }
+  #toast.err { border-color: #cc4444; color: #cc4444; }
+
+  /* loading */
+  .spinner {
+    display: inline-block;
+    width: 10px;
+    height: 10px;
+    border: 1px solid var(--border-light);
+    border-top-color: var(--text-dim);
+    border-radius: 50%;
+    animation: spin 0.6s linear infinite;
+    margin-right: 0.5rem;
+    vertical-align: middle;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* config panel */
+  #config-panel {
+    display: none;
+    background: var(--bg2);
+    border-bottom: 1px solid var(--border);
+    padding: 1.25rem 2.5rem;
+    gap: 1.5rem;
+    flex-wrap: wrap;
+    align-items: flex-end;
+  }
+  #config-panel.open { display: flex; }
+  #config-panel .form-group { margin: 0; flex: 1; min-width: 200px; }
+
+  .config-note {
+    font-family: var(--mono);
+    font-size: 0.6rem;
+    color: var(--text-dimmer);
+    line-height: 1.6;
+    width: 100%;
+  }
+
+  @media (max-width: 600px) {
+    header, .controls, .grid-wrap { padding-left: 1rem; padding-right: 1rem; }
+    .form-row { grid-template-columns: 1fr; }
+    #config-panel { padding-left: 1rem; padding-right: 1rem; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">osu<span>!</span> goals</div>
+  <div class="header-actions">
+    <button id="config-btn" onclick="toggleConfig()" style="font-family:var(--mono);font-size:0.65rem;letter-spacing:0.1em;text-transform:uppercase;background:none;border:1px solid var(--border);color:var(--text-dimmer);padding:0.5rem 0.75rem;cursor:pointer;transition:all 0.15s" onmouseover="this.style.color='var(--text-dim)'" onmouseout="this.style.color='var(--text-dimmer)'">config</button>
+    <button id="auth-btn" onclick="handleAuth()">sign in</button>
+  </div>
+</header>
+
+<!-- Config panel (osu API + GitHub settings) -->
+<div id="config-panel">
+  <div class="form-group">
+    <label>osu! Client ID</label>
+    <input id="cfg-osu-id" type="text" placeholder="from osu! account settings" oninput="saveConfig()">
+  </div>
+  <div class="form-group">
+    <label>osu! Client Secret</label>
+    <input id="cfg-osu-secret" type="password" placeholder="from osu! account settings" oninput="saveConfig()">
+  </div>
+  <div class="form-group">
+    <label>GitHub Repo <span class="optional">(owner/repo)</span></label>
+    <input id="cfg-repo" type="text" placeholder="yourusername/your-repo" oninput="saveConfig()">
+  </div>
+  <div class="form-group">
+    <label>GitHub OAuth App Client ID</label>
+    <input id="cfg-gh-client-id" type="text" placeholder="Ov23li..." oninput="saveConfig()">
+  </div>
+  <div class="form-group">
+    <label>Cloudflare Worker URL</label>
+    <input id="cfg-worker-url" type="text" placeholder="https://your-worker.workers.dev" oninput="saveConfig()">
+  </div>
+  <div class="config-note">
+    Config is stored in localStorage. The osu! credentials are used client-side to fetch map metadata. See SETUP.md for instructions.
+  </div>
+</div>
+
+<div class="controls">
+  <div class="tab-group">
+    <button class="tab-btn active" onclick="switchTab('goals')" id="tab-goals">Goals</button>
+    <button class="tab-btn" onclick="switchTab('completed')" id="tab-completed">Completed</button>
+  </div>
+  <button id="add-btn" onclick="openAddModal()">+ add map</button>
+  <button id="bulk-btn" onclick="openBulkModal()">+ bulk add</button>
+  <div class="count-badge" id="count-badge"></div>
+</div>
+
+<div class="grid-wrap">
+  <div class="grid" id="goals-grid"></div>
+  <div id="completed-section" style="display:none">
+    <div class="section-label">completed</div>
+    <div class="grid" id="completed-grid"></div>
+  </div>
+</div>
+
+<!-- Add/Edit Modal -->
+<div class="modal-overlay" id="add-modal">
+  <div class="modal">
+    <button class="modal-close" onclick="closeModal('add-modal')">✕</button>
+    <div class="modal-title" id="modal-title-text">add map goal</div>
+
+    <div class="form-group">
+      <label>Beatmap URL</label>
+      <input id="map-url" type="text" placeholder="https://osu.ppy.sh/beatmapsets/..." oninput="onUrlInput(this.value)">
+      <div class="fetch-status" id="fetch-status"></div>
+    </div>
+
+    <div class="map-preview" id="map-preview">
+      <img id="preview-img" src="" alt="">
+      <div class="map-preview-info">
+        <div class="title" id="preview-title"></div>
+        <div class="sub" id="preview-sub"></div>
+      </div>
+    </div>
+
+    <div class="form-row">
+      <div class="form-group">
+        <label>Target ACC <span class="optional">(optional)</span></label>
+        <input id="goal-acc" type="text" placeholder="99.5%">
+      </div>
+      <div class="form-group">
+        <label>Target Grade <span class="optional">(optional)</span></label>
+        <input id="goal-grade" type="text" placeholder="SS / S">
+      </div>
+      <div class="form-group">
+        <label>Target PP <span class="optional">(optional)</span></label>
+        <input id="goal-pp" type="text" placeholder="420pp">
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label>Importance <span class="optional">(1–10)</span></label>
+      <div class="importance-row">
+        <input type="range" id="goal-importance" min="1" max="10" value="5" oninput="document.getElementById('importance-val').textContent=this.value">
+        <span class="importance-val" id="importance-val">5</span>
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label>Notes <span class="optional">(optional)</span></label>
+      <input id="goal-notes" type="text" placeholder="e.g. need better reading">
+    </div>
+
+    <div class="achieved-toggle">
+      <input type="checkbox" id="goal-achieved">
+      <label for="goal-achieved">Mark as achieved / completed</label>
+    </div>
+
+    <div class="modal-actions">
+      <button class="btn-secondary" onclick="closeModal('add-modal')">cancel</button>
+      <button class="btn-primary" id="save-btn" onclick="saveGoal()">save goal</button>
+    </div>
+  </div>
+</div>
+
+<!-- Bulk Modal -->
+<div class="modal-overlay" id="bulk-modal">
+  <div class="modal">
+    <button class="modal-close" onclick="closeModal('bulk-modal')">✕</button>
+    <div class="modal-title">bulk add maps</div>
+    <p class="bulk-note">Paste one osu! beatmap URL per line. Map metadata will be fetched automatically. Existing maps (same URL) will be skipped.</p>
+    <div class="form-group">
+      <label>URLs (one per line)</label>
+      <textarea id="bulk-urls" placeholder="https://osu.ppy.sh/beatmapsets/123456#osu/789012&#10;https://osu.ppy.sh/beatmapsets/..."></textarea>
+    </div>
+    <div class="fetch-status" id="bulk-status"></div>
+    <div class="modal-actions">
+      <button class="btn-secondary" onclick="closeModal('bulk-modal')">cancel</button>
+      <button class="btn-primary" id="bulk-save-btn" onclick="bulkAdd()">import maps</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+//  CONFIG ─
+const CONFIG_KEY = 'osu_goals_config';
+const GOALS_KEY  = 'osu_goals_data';
+const TOKEN_KEY  = 'osu_goals_gh_token';
+
+function loadConfig() {
+  try { return JSON.parse(localStorage.getItem(CONFIG_KEY)) || {}; }
+  catch { return {}; }
+}
+function saveConfig() {
+  const cfg = {
+    osuClientId:     document.getElementById('cfg-osu-id').value.trim(),
+    osuClientSecret: document.getElementById('cfg-osu-secret').value.trim(),
+    repo:            document.getElementById('cfg-repo').value.trim(),
+    ghClientId:      document.getElementById('cfg-gh-client-id').value.trim(),
+    workerUrl:       document.getElementById('cfg-worker-url').value.trim(),
+  };
+  localStorage.setItem(CONFIG_KEY, JSON.stringify(cfg));
+}
+function applyConfig() {
+  const cfg = loadConfig();
+  document.getElementById('cfg-osu-id').value      = cfg.osuClientId || '';
+  document.getElementById('cfg-osu-secret').value  = cfg.osuClientSecret || '';
+  document.getElementById('cfg-repo').value         = cfg.repo || '';
+  document.getElementById('cfg-gh-client-id').value = cfg.ghClientId || '';
+  document.getElementById('cfg-worker-url').value   = cfg.workerUrl || '';
+}
+function toggleConfig() {
+  document.getElementById('config-panel').classList.toggle('open');
+}
+
+//  AUTH 
+let ghToken = localStorage.getItem(TOKEN_KEY) || null;
+let currentUser = null;
+
+function handleAuth() {
+  if (ghToken) {
+    ghToken = null;
+    localStorage.removeItem(TOKEN_KEY);
+    document.body.classList.remove('authed');
+    document.getElementById('auth-btn').textContent = 'sign in';
+    document.getElementById('auth-btn').classList.remove('logged-in');
+    showToast('signed out', 'ok');
+  } else {
+    const cfg = loadConfig();
+    if (!cfg.ghClientId) {
+      showToast('set github client id in config first', 'err');
+      document.getElementById('config-panel').classList.add('open');
+      return;
+    }
+    const redirect = encodeURIComponent(location.href.split('?')[0]);
+    location.href = `https://github.com/login/oauth/authorize?client_id=${cfg.ghClientId}&scope=repo&redirect_uri=${redirect}`;
+  }
+}
+
+async function exchangeCode(code) {
+  const cfg = loadConfig();
+  if (!cfg.workerUrl) { showToast('set worker url in config', 'err'); return; }
+  try {
+    const r = await fetch(`${cfg.workerUrl}/exchange?code=${code}`);
+    const d = await r.json();
+    if (d.access_token) {
+      ghToken = d.access_token;
+      localStorage.setItem(TOKEN_KEY, ghToken);
+      // remove code from URL
+      history.replaceState({}, '', location.pathname);
+      await verifyAuth();
+    } else {
+      showToast('auth failed: ' + (d.error || 'unknown'), 'err');
+    }
+  } catch(e) {
+    showToast('worker request failed', 'err');
+  }
+}
+
+async function verifyAuth() {
+  if (!ghToken) return;
+  try {
+    const r = await fetch('https://api.github.com/user', {
+      headers: { Authorization: `token ${ghToken}` }
+    });
+    const d = await r.json();
+    currentUser = d.login;
+    document.body.classList.add('authed');
+    document.getElementById('auth-btn').textContent = `@${d.login}`;
+    document.getElementById('auth-btn').classList.add('logged-in');
+  } catch {
+    ghToken = null;
+    localStorage.removeItem(TOKEN_KEY);
+  }
+}
+
+//  DATA PERSISTENCE (GitHub repo) 
+let goals = [];
+let goalsFileSha = null;
+
+async function loadGoals() {
+  const cfg = loadConfig();
+  if (!cfg.repo) {
+    // fallback to localStorage
+    try { goals = JSON.parse(localStorage.getItem(GOALS_KEY)) || []; }
+    catch { goals = []; }
+    renderAll();
+    return;
+  }
+  try {
+    const r = await fetch(`https://api.github.com/repos/${cfg.repo}/contents/goals.json`, {
+      headers: ghToken ? { Authorization: `token ${ghToken}` } : {}
+    });
+    if (r.ok) {
+      const d = await r.json();
+      goalsFileSha = d.sha;
+      goals = JSON.parse(atob(d.content.replace(/\n/g,'')));
+    } else if (r.status === 404) {
+      goals = [];
+    }
+  } catch {
+    try { goals = JSON.parse(localStorage.getItem(GOALS_KEY)) || []; }
+    catch { goals = []; }
+  }
+  renderAll();
+}
+
+async function persistGoals() {
+  const cfg = loadConfig();
+  // always update localStorage as fallback
+  localStorage.setItem(GOALS_KEY, JSON.stringify(goals));
+  if (!cfg.repo || !ghToken) return;
+  try {
+    const content = btoa(unescape(encodeURIComponent(JSON.stringify(goals, null, 2))));
+    const body = { message: 'update goals.json', content };
+    if (goalsFileSha) body.sha = goalsFileSha;
+    const r = await fetch(`https://api.github.com/repos/${cfg.repo}/contents/goals.json`, {
+      method: 'PUT',
+      headers: { Authorization: `token ${ghToken}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    });
+    if (r.ok) {
+      const d = await r.json();
+      goalsFileSha = d.content.sha;
+      showToast('saved to github', 'ok');
+    } else {
+      showToast('github save failed', 'err');
+    }
+  } catch {
+    showToast('save failed', 'err');
+  }
+}
+
+//  OSU API 
+let osuToken = null;
+let osuTokenExpiry = 0;
+
+async function getOsuToken() {
+  if (osuToken && Date.now() < osuTokenExpiry) return osuToken;
+  const cfg = loadConfig();
+  if (!cfg.osuClientId || !cfg.osuClientSecret) return null;
+  try {
+    const r = await fetch('https://osu.ppy.sh/oauth/token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+      body: JSON.stringify({
+        client_id: cfg.osuClientId,
+        client_secret: cfg.osuClientSecret,
+        grant_type: 'client_credentials',
+        scope: 'public'
+      })
+    });
+    const d = await r.json();
+    if (d.access_token) {
+      osuToken = d.access_token;
+      osuTokenExpiry = Date.now() + (d.expires_in - 60) * 1000;
+      return osuToken;
+    }
+  } catch {}
+  return null;
+}
+
+function parseBeatmapId(url) {
+  // handles /beatmapsets/ID#osu/DIFF_ID and /beatmaps/DIFF_ID
+  const m1 = url.match(/beatmapsets\/\d+#\w+\/(\d+)/);
+  if (m1) return m1[1];
+  const m2 = url.match(/beatmaps\/(\d+)/);
+  if (m2) return m2[1];
+  const m3 = url.match(/b=(\d+)/);
+  if (m3) return m3[1];
+  return null;
+}
+
+async function fetchMapMeta(url) {
+  const id = parseBeatmapId(url);
+  if (!id) return null;
+  const token = await getOsuToken();
+  if (!token) return { id, title: 'Map #' + id, artist: '', diff: '', stars: null, cover: null };
+  try {
+    const r = await fetch(`https://osu.ppy.sh/api/v2/beatmaps/${id}`, {
+      headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' }
+    });
+    if (!r.ok) return null;
+    const d = await r.json();
+    return {
+      id,
+      mapsetId: d.beatmapset_id,
+      title: d.beatmapset?.title || '',
+      artist: d.beatmapset?.artist || '',
+      diff: d.version || '',
+      stars: d.difficulty_rating ? parseFloat(d.difficulty_rating).toFixed(2) : null,
+      cover: d.beatmapset?.covers?.cover || d.beatmapset?.covers?.list || null,
+      url
+    };
+  } catch { return null; }
+}
+
+//  URL INPUT DEBOUNCE ─
+let urlDebounce = null;
+function onUrlInput(val) {
+  clearTimeout(urlDebounce);
+  const status = document.getElementById('fetch-status');
+  const preview = document.getElementById('map-preview');
+  preview.classList.remove('show');
+  if (!val.trim()) { status.textContent = ''; return; }
+  status.className = 'fetch-status';
+  status.innerHTML = '<span class="spinner"></span>fetching map...';
+  urlDebounce = setTimeout(async () => {
+    const meta = await fetchMapMeta(val.trim());
+    if (!meta) {
+      status.className = 'fetch-status err';
+      status.textContent = 'could not fetch map (check url or osu api config)';
+    } else {
+      status.className = 'fetch-status ok';
+      status.textContent = '✓ ' + meta.title;
+      document.getElementById('preview-title').textContent = meta.title + (meta.diff ? ' [' + meta.diff + ']' : '');
+      document.getElementById('preview-sub').textContent = meta.artist + (meta.stars ? '  ·  ★' + meta.stars : '');
+      if (meta.cover) {
+        document.getElementById('preview-img').src = meta.cover;
+        preview.classList.add('show');
+      }
+      window._currentMeta = meta;
+    }
+  }, 600);
+}
+
+//  MODAL MANAGEMENT 
+let editingId = null;
+
+function openAddModal() {
+  editingId = null;
+  window._currentMeta = null;
+  document.getElementById('modal-title-text').textContent = 'add map goal';
+  document.getElementById('map-url').value = '';
+  document.getElementById('map-url').disabled = false;
+  document.getElementById('fetch-status').textContent = '';
+  document.getElementById('map-preview').classList.remove('show');
+  document.getElementById('goal-acc').value = '';
+  document.getElementById('goal-grade').value = '';
+  document.getElementById('goal-pp').value = '';
+  document.getElementById('goal-importance').value = 5;
+  document.getElementById('importance-val').textContent = '5';
+  document.getElementById('goal-notes').value = '';
+  document.getElementById('goal-achieved').checked = false;
+  document.getElementById('add-modal').classList.add('open');
+}
+
+function openEditModal(id) {
+  const g = goals.find(x => x.id === id);
+  if (!g) return;
+  editingId = id;
+  window._currentMeta = { title: g.title, artist: g.artist, diff: g.diff, stars: g.stars, cover: g.cover, url: g.url };
+  document.getElementById('modal-title-text').textContent = 'edit goal';
+  document.getElementById('map-url').value = g.url;
+  document.getElementById('map-url').disabled = true;
+  document.getElementById('fetch-status').className = 'fetch-status ok';
+  document.getElementById('fetch-status').textContent = '✓ ' + g.title;
+  if (g.cover) {
+    document.getElementById('preview-img').src = g.cover;
+    document.getElementById('preview-title').textContent = g.title + (g.diff ? ' [' + g.diff + ']' : '');
+    document.getElementById('preview-sub').textContent = g.artist + (g.stars ? '  ·  ★' + g.stars : '');
+    document.getElementById('map-preview').classList.add('show');
+  }
+  document.getElementById('goal-acc').value = g.goalAcc || '';
+  document.getElementById('goal-grade').value = g.goalGrade || '';
+  document.getElementById('goal-pp').value = g.goalPp || '';
+  document.getElementById('goal-importance').value = g.importance || 5;
+  document.getElementById('importance-val').textContent = g.importance || 5;
+  document.getElementById('goal-notes').value = g.notes || '';
+  document.getElementById('goal-achieved').checked = !!g.achieved;
+  document.getElementById('add-modal').classList.add('open');
+}
+
+function closeModal(id) {
+  document.getElementById(id).classList.remove('open');
+}
+
+async function saveGoal() {
+  const btn = document.getElementById('save-btn');
+  btn.disabled = true;
+  btn.textContent = 'saving...';
+
+  const url = document.getElementById('map-url').value.trim();
+  let meta = window._currentMeta;
+
+  if (!editingId && !meta) {
+    // try fetch one more time
+    meta = url ? await fetchMapMeta(url) : null;
+    if (!meta && url) {
+      // allow saving without API
+      meta = { title: url, artist: '', diff: '', stars: null, cover: null, url };
+    }
+  }
+
+  if (!editingId && !url) {
+    showToast('enter a map url', 'err');
+    btn.disabled = false; btn.textContent = 'save goal';
+    return;
+  }
+
+  const acc    = document.getElementById('goal-acc').value.trim();
+  const grade  = document.getElementById('goal-grade').value.trim();
+  const pp     = document.getElementById('goal-pp').value.trim();
+  const imp    = parseInt(document.getElementById('goal-importance').value);
+  const notes  = document.getElementById('goal-notes').value.trim();
+  const achieved = document.getElementById('goal-achieved').checked;
+
+  if (editingId) {
+    const idx = goals.findIndex(x => x.id === editingId);
+    if (idx !== -1) {
+      goals[idx] = { ...goals[idx], goalAcc: acc, goalGrade: grade, goalPp: pp, importance: imp, notes, achieved };
+    }
+  } else {
+    // prevent duplicate URL
+    if (goals.find(g => g.url === url)) {
+      showToast('map already in list', 'err');
+      btn.disabled = false; btn.textContent = 'save goal';
+      return;
+    }
+    goals.push({
+      id: 'g_' + Date.now(),
+      url,
+      title: meta?.title || url,
+      artist: meta?.artist || '',
+      diff: meta?.diff || '',
+      stars: meta?.stars || null,
+      cover: meta?.cover || null,
+      goalAcc: acc,
+      goalGrade: grade,
+      goalPp: pp,
+      importance: imp,
+      notes,
+      achieved,
+      addedAt: Date.now()
+    });
+  }
+
+  await persistGoals();
+  renderAll();
+  closeModal('add-modal');
+  btn.disabled = false; btn.textContent = 'save goal';
+}
+
+function deleteGoal(id) {
+  if (!confirm('remove this goal?')) return;
+  goals = goals.filter(g => g.id !== id);
+  persistGoals();
+  renderAll();
+}
+
+//  BULK ADD ──
+async function bulkAdd() {
+  const raw = document.getElementById('bulk-urls').value.trim();
+  const urls = raw.split('\n').map(u => u.trim()).filter(Boolean);
+  if (!urls.length) return;
+
+  const btn = document.getElementById('bulk-save-btn');
+  const status = document.getElementById('bulk-status');
+  btn.disabled = true;
+  let added = 0, skipped = 0, failed = 0;
+
+  for (let i = 0; i < urls.length; i++) {
+    const url = urls[i];
+    status.className = 'fetch-status';
+    status.innerHTML = `<span class="spinner"></span>fetching ${i+1}/${urls.length}...`;
+
+    if (goals.find(g => g.url === url)) { skipped++; continue; }
+
+    const meta = await fetchMapMeta(url);
+    if (!meta) {
+      // add with no meta
+      goals.push({ id: 'g_' + Date.now() + Math.random(), url, title: url, artist: '', diff: '', stars: null, cover: null, goalAcc:'', goalGrade:'', goalPp:'', importance: 5, achieved: false, addedAt: Date.now() });
+      failed++;
+    } else {
+      goals.push({ id: 'g_' + Date.now() + Math.random(), url, ...meta, goalAcc:'', goalGrade:'', goalPp:'', importance: 5, achieved: false, addedAt: Date.now() });
+      added++;
+    }
+    // small delay to avoid rate limiting
+    await new Promise(r => setTimeout(r, 200));
+  }
+
+  await persistGoals();
+  renderAll();
+  closeModal('bulk-modal');
+  showToast(`added ${added}, skipped ${skipped}, no-meta ${failed}`, 'ok');
+  btn.disabled = false;
+  document.getElementById('bulk-urls').value = '';
+}
+
+//  RENDER ─
+let currentTab = 'goals';
+
+function switchTab(tab) {
+  currentTab = tab;
+  document.getElementById('tab-goals').classList.toggle('active', tab === 'goals');
+  document.getElementById('tab-completed').classList.toggle('active', tab === 'completed');
+  renderAll();
+}
+
+function renderAll() {
+  const active = goals.filter(g => !g.achieved).sort((a,b) => (b.importance||5) - (a.importance||5));
+  const done   = goals.filter(g => g.achieved).sort((a,b) => (b.importance||5) - (a.importance||5));
+
+  const goalsGrid = document.getElementById('goals-grid');
+  const completedGrid = document.getElementById('completed-grid');
+  const completedSection = document.getElementById('completed-section');
+
+  goalsGrid.style.display = currentTab === 'goals' ? '' : 'none';
+  completedSection.style.display = currentTab === 'completed' ? '' : 'none';
+
+  document.getElementById('count-badge').innerHTML =
+    `<span>${active.length}</span> goals · <span>${done.length}</span> completed`;
+
+  goalsGrid.innerHTML = active.length ? active.map(renderCard).join('') : `<div class="empty-state">no goals yet — add a map above</div>`;
+  completedGrid.innerHTML = done.length ? done.map(renderCard).join('') : `<div class="empty-state">nothing completed yet</div>`;
+}
+
+function renderCard(g) {
+  const imp = g.importance || 5;
+  const impClass = imp >= 8 ? 'high' : imp >= 5 ? 'med' : '';
+  const chips = [];
+  if (g.goalAcc)   chips.push(`<span class="goal-chip${g.achieved?' achieved':''}">ACC ${g.goalAcc}</span>`);
+  if (g.goalGrade) chips.push(`<span class="goal-chip${g.achieved?' achieved':''}">GRADE ${g.goalGrade}</span>`);
+  if (g.goalPp)    chips.push(`<span class="goal-chip${g.achieved?' achieved':''}">PP ${g.goalPp}</span>`);
+  if (!chips.length) chips.push(`<span class="goal-chip" style="color:var(--text-dimmer)">no goal set</span>`);
+
+  return `<div class="card">
+    ${g.cover ? `<div class="card-bg" style="background-image:url('${g.cover}')"></div>` : ''}
+    <div class="card-inner">
+      <div class="card-top">
+        <div>
+          <div class="card-title">${esc(g.title)}</div>
+          ${g.artist ? `<div class="card-artist">${esc(g.artist)}</div>` : ''}
+        </div>
+        <span class="importance-badge ${impClass}">${imp}</span>
+      </div>
+      ${g.diff || g.stars ? `<div class="card-diff">
+        ${g.diff ? `<span>${esc(g.diff)}</span>` : ''}
+        ${g.stars ? `<span class="star-rating"><span>★</span> ${g.stars}</span>` : ''}
+      </div>` : ''}
+      <div class="card-goals">${chips.join('')}</div>
+      ${g.notes ? `<div style="font-size:0.68rem;color:var(--text-dimmer);margin-top:0.25rem">${esc(g.notes)}</div>` : ''}
+    </div>
+    <div class="card-actions">
+      <button class="card-action-btn" onclick="openEditModal('${g.id}')">edit</button>
+      <button class="card-action-btn del" onclick="deleteGoal('${g.id}')">✕</button>
+    </div>
+  </div>`;
+}
+
+function esc(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+//  TOAST ──
+let toastTimer = null;
+function showToast(msg, type='ok') {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'show ' + type;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.className = '', 2500);
+}
+
+//  INIT 
+async function init() {
+  applyConfig();
+
+  // handle OAuth callback
+  const params = new URLSearchParams(location.search);
+  const code = params.get('code');
+  if (code) {
+    showToast('exchanging token...', 'ok');
+    await exchangeCode(code);
+  } else {
+    await verifyAuth();
+  }
+
+  await loadGoals();
+}
+
+init();
+
+// close modals on overlay click
+document.querySelectorAll('.modal-overlay').forEach(el => {
+  el.addEventListener('click', e => { if (e.target === el) el.classList.remove('open'); });
+});
+</script>
+</body>
+</html>
