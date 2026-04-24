@@ -750,6 +750,14 @@ async function fetchGoals() {
 async function persistGoals() {
   localStorage.setItem('osugoals_data', JSON.stringify(goals));
   if (!session) return;
+  // always re-fetch latest SHA before writing to avoid stale-SHA / empty-diff commits
+  try {
+    const fresh = await fetch(`${WORKER}/goals`);
+    if (fresh.ok) {
+      const fd = await fresh.json();
+      goalsSha = fd.sha || null;
+    }
+  } catch { /* network hiccup - proceed with cached SHA */ }
   try {
     const r = await fetch(`${WORKER}/goals`, {
       method: 'POST',
@@ -765,21 +773,6 @@ async function persistGoals() {
       toast('saved', 'ok');
     } else {
       const d = await r.json().catch(() => ({}));
-      // 409 = SHA conflict (file changed elsewhere) — re-fetch SHA and retry once
-      if (r.status === 409 || (d.detail?.message || '').includes('SHA')) {
-        toast('syncing…', '');
-        const fresh = await fetch(`${WORKER}/goals`);
-        if (fresh.ok) {
-          const fd = await fresh.json();
-          goalsSha = fd.sha;
-          const r2 = await fetch(`${WORKER}/goals`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.token}` },
-            body: JSON.stringify({ goals, sha: goalsSha }),
-          });
-          if (r2.ok) { const d2 = await r2.json(); if (d2.sha) goalsSha = d2.sha; toast('saved', 'ok'); return; }
-        }
-      }
       toast(d.error || 'save failed', 'err');
     }
   } catch {
