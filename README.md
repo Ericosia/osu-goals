@@ -1,1 +1,1 @@
-https://slep34263657.github.io/osu-goals/
+https://ericosia.github.io/osu-goals/
